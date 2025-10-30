@@ -4,3 +4,7 @@ plotly>=5.18.0
 dash>=2.14.0
 requests>=2.31.0
 wbgapi>=1.0.12
+wbdata>=1.1.0
+seaborn>=0.13.0
+matplotlib>=3.10.0
+python-dotenv>=1.2.0
