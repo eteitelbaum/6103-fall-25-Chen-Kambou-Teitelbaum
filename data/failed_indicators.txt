@@ -1,0 +1,22 @@
+Failed Downloads - 2025-11-14 20:35:23.989362
+========================================
+- flfp_15_64 (SL.TLF.ACTI.FE.NE.ZS)
+- flfp_25_54 (SL.TLF.ACTI.FE.25UP.ZS)
+- dependency_ratio (SP.POP.DPND.DT)
+- gdp_growth (NY.GDP.MKTP.KD.ZG)
+- services_gdp (NV.SRV.TOTL.ZS)
+- industry_gdp (NV.IND.TOTL.ZS)
+- rule_of_law (RL.EST)
+- unemployment_total (SL.UEM.TOTL.ZS)
+- unemployment_female (SL.UEM.TOTL.FE.ZS)
+
+Detailed Errors:
+- flfp_15_64 (SL.TLF.ACTI.FE.NE.ZS): Got error 120 (Invalid value): The provided parameter value is not valid
+- flfp_25_54 (SL.TLF.ACTI.FE.25UP.ZS): Got error 120 (Invalid value): The provided parameter value is not valid
+- dependency_ratio (SP.POP.DPND.DT): Got error 120 (Invalid value): The provided parameter value is not valid
+- gdp_growth (NY.GDP.MKTP.KD.ZG): 'NoneType' object does not support item deletion
+- services_gdp (NV.SRV.TOTL.ZS): 'NoneType' object does not support item deletion
+- industry_gdp (NV.IND.TOTL.ZS): 'NoneType' object does not support item deletion
+- rule_of_law (RL.EST): 'NoneType' object does not support item deletion
+- unemployment_total (SL.UEM.TOTL.ZS): 'NoneType' object does not support item deletion
+- unemployment_female (SL.UEM.TOTL.FE.ZS): 'NoneType' object does not support item deletion

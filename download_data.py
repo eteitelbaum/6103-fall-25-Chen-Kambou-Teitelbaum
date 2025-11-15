@@ -1,0 +1,201 @@
+"""
+Female Labor Force Participation Data Download
+Downloads all requested FLFP indicators individually with error tracking
+"""
+
+import wbdata
+import pandas as pd
+import os
+import time
+from datetime import datetime
+
+# Create output directory
+os.makedirs("data", exist_ok=True)
+
+# Complete FLFP indicator set
+indicators = {
+    # FLFP Measures
+    "SL.TLF.CACT.FE.ZS": "flfp_total",
+    "SL.TLF.ACTI.FE.ZS": "flfp_15_24", 
+    "SL.TLF.ACTI.FE.NE.ZS": "flfp_15_64",
+    "SL.TLF.ACTI.FE.25UP.ZS": "flfp_25_54",
+    
+    # Demographics
+    "SP.DYN.TFRT.IN": "fertility_rate",
+    "SP.ADO.TFRT": "fertility_adolescent",
+    "SP.URB.TOTL.IN.ZS": "urban_population",
+    "SP.POP.DPND.DT": "dependency_ratio",
+    "SP.DYN.LE00.FE.IN": "life_exp_female",
+    "SP.DYN.IMRT.IN": "infant_mortality",
+    
+    # Education
+    "SE.SEC.ENRR.FE": "secondary_enroll_fe",
+    "SE.TER.ENRR.FE": "tertiary_enroll_fe",
+    "SE.ADT.LITR.FE.ZS": "literacy_female",
+    "SE.ENR.PRSC.FM.ZS": "gender_parity_primary",
+    "SE.ENR.SECO.FM.ZS": "gender_parity_secondary",
+    
+    # Economic Structure
+    "NY.GDP.PCAP.KD": "gdp_per_capita_const",
+    "NY.GDP.MKTP.KD.ZG": "gdp_growth",
+    "NV.SRV.TOTL.ZS": "services_gdp",
+    "NV.IND.TOTL.ZS": "industry_gdp",
+    
+    # Governance
+    "RL.EST": "rule_of_law",
+    
+    # Labor Market
+    "SL.UEM.TOTL.ZS": "unemployment_total",
+    "SL.UEM.TOTL.FE.ZS": "unemployment_female",
+}
+
+print("COMPREHENSIVE FLFP Data Download")
+print("=" * 50)
+print(f"Downloading {len(indicators)} indicators individually")
+print(f"Started: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+print()
+
+def download_single_indicator(code, name):
+    """Download single indicator and return processed DataFrame"""
+    try:
+        print(f"  Downloading {name} ({code})")
+        
+        df = wbdata.get_dataframe(
+            indicators={code: name},
+            date=("2000", "2023"),
+            skip_cache=True
+        )
+        
+        # Process the data
+        df_clean = df.reset_index()
+        if df_clean['date'].dtype == 'object':
+            df_clean['year'] = df_clean['date'].astype(int)
+        else:
+            df_clean['year'] = pd.to_datetime(df_clean['date']).dt.year
+        
+        df_clean = df_clean.drop('date', axis=1)
+        df_clean = df_clean.rename(columns={'country': 'country_name'})
+        
+        print(f"    SUCCESS: {df_clean.shape[0]:,} rows")
+        return df_clean, None
+        
+    except Exception as e:
+        error_msg = f"{name} ({code}): {str(e)}"
+        print(f"    FAILED: {str(e)}")
+        return None, error_msg
+
+# Track downloads
+successful_downloads = []
+failed_indicators = []
+failed_details = []
+
+# Download each indicator
+total = len(indicators)
+for i, (code, name) in enumerate(indicators.items(), 1):
+    print(f"[{i}/{total}] {name}")
+    
+    df_result, error = download_single_indicator(code, name)
+    
+    if df_result is not None:
+        successful_downloads.append(df_result)
+    else:
+        failed_indicators.append(f"{name} ({code})")
+        failed_details.append(error)
+    
+    if i < total:
+        time.sleep(2)
+
+print()
+print("Download Summary:")
+print(f"  Successful: {len(successful_downloads)}/{total}")
+print(f"  Failed: {len(failed_indicators)}/{total}")
+
+# Log failures
+if failed_indicators:
+    with open("data/failed_indicators.txt", 'w') as f:
+        f.write(f"Failed Downloads - {datetime.now()}\n")
+        f.write("=" * 40 + "\n")
+        for indicator in failed_indicators:
+            f.write(f"- {indicator}\n")
+        f.write("\nDetailed Errors:\n")
+        for detail in failed_details:
+            f.write(f"- {detail}\n")
+
+if not successful_downloads:
+    print("ERROR: No indicators downloaded")
+    exit(1)
+
+print()
+print("Merging successful downloads...")
+
+# Merge all downloads
+df_final = successful_downloads[0]
+for i, df_chunk in enumerate(successful_downloads[1:], 2):
+    print(f"  Merging {i}/{len(successful_downloads)}")
+    df_final = df_final.merge(df_chunk, on=['country_name', 'year'], how='outer')
+
+print(f"Combined: {df_final.shape}")
+
+# Add metadata
+print("Adding country metadata...")
+try:
+    countries = wbdata.get_countries()
+    country_meta = []
+    
+    for country in countries:
+        region = country.get('region', {}).get('value', '') if country.get('region') else ''
+        income = country.get('incomeLevel', {}).get('value', '') if country.get('incomeLevel') else ''
+        
+        country_meta.append({
+            'country_name': country['name'],
+            'iso3c': country['id'],
+            'region': region,
+            'income_level': income
+        })
+    
+    meta_df = pd.DataFrame(country_meta)
+    df_final = df_final.merge(meta_df, on='country_name', how='left')
+    print("  Added metadata")
+    
+except Exception as e:
+    print(f"  Warning: {e}")
+    df_final['iso3c'] = df_final['country_name']
+
+# Filter countries
+print("Filtering to countries...")
+initial = len(df_final)
+
+if 'region' in df_final.columns:
+    df_final = df_final[
+        (df_final['region'] != '') & 
+        (df_final['region'] != 'Aggregates') &
+        (~df_final['region'].isna())
+    ]
+
+df_final = df_final[
+    (~df_final['country_name'].str.contains('income', case=False, na=False)) &
+    (~df_final['country_name'].str.contains('World', case=False, na=False)) &
+    (~df_final['country_name'].str.contains('region', case=False, na=False))
+]
+
+print(f"  Removed {initial - len(df_final):,} non-country rows")
+
+# Save
+df_final = df_final.sort_values(['country_name', 'year'])
+df_final.to_parquet("data/flfp_dataset.parquet", index=False)
+
+# Summary
+print()
+print("FINAL SUMMARY:")
+print(f"  Observations: {len(df_final):,}")
+print(f"  Countries: {df_final['country_name'].nunique()}")
+print(f"  Years: {df_final['year'].min()}-{df_final['year'].max()}")
+print(f"  Indicators: {len(successful_downloads)}/{total}")
+
+if failed_indicators:
+    print(f"  Failed: {len(failed_indicators)} (see data/failed_indicators.txt)")
+
+print()
+print("Dataset saved: data/flfp_dataset.parquet")
+print(f"Completed: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+print("Ready for analysis!")
