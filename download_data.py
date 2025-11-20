@@ -7,6 +7,7 @@ import wbdata
 import pandas as pd
 import os
 import time
+import requests
 from datetime import datetime
 
 # Create output directory
@@ -15,16 +16,13 @@ os.makedirs("data", exist_ok=True)
 # Complete FLFP indicator set
 indicators = {
     # FLFP Measures
-    "SL.TLF.CACT.FE.ZS": "flfp_total",
-    "SL.TLF.ACTI.FE.ZS": "flfp_15_24", 
-    "SL.TLF.ACTI.FE.NE.ZS": "flfp_15_64",
-    "SL.TLF.ACTI.FE.25UP.ZS": "flfp_25_54",
-    
+    "SL.TLF.CACT.FE.ZS": "flfp_15_64",
+
     # Demographics
     "SP.DYN.TFRT.IN": "fertility_rate",
     "SP.ADO.TFRT": "fertility_adolescent",
     "SP.URB.TOTL.IN.ZS": "urban_population",
-    "SP.POP.DPND.DT": "dependency_ratio",
+    "SP.POP.DPND": "dependency_ratio",
     "SP.DYN.LE00.FE.IN": "life_exp_female",
     "SP.DYN.IMRT.IN": "infant_mortality",
     
@@ -60,6 +58,7 @@ def download_single_indicator(code, name):
     try:
         print(f"  Downloading {name} ({code})")
         
+        # Try the normal approach first
         df = wbdata.get_dataframe(
             indicators={code: name},
             date=("2000", "2023"),
@@ -80,9 +79,57 @@ def download_single_indicator(code, name):
         return df_clean, None
         
     except Exception as e:
-        error_msg = f"{name} ({code}): {str(e)}"
-        print(f"    FAILED: {str(e)}")
-        return None, error_msg
+        # Check if this is a cache-related error (NoneType deletion)
+        if "'NoneType' object does not support item deletion" in str(e):
+            print(f"    Cache error detected, trying alternative approach...")
+            try:
+                # Alternative approach: Use wbdata.get_data instead of get_dataframe
+                import requests
+                
+                # Direct API call as fallback
+                url = f"https://api.worldbank.org/v2/countries/all/indicators/{code}"
+                params = {
+                    'format': 'json',
+                    'date': '2000:2023',
+                    'per_page': 20000  # Large enough to get all data
+                }
+                
+                response = requests.get(url, params=params)
+                if response.status_code == 200:
+                    data = response.json()
+                    if isinstance(data, list) and len(data) >= 2:
+                        records = data[1] if len(data) > 1 else []
+                        
+                        # Convert to DataFrame manually
+                        rows = []
+                        for record in records:
+                            if record.get('value') is not None:  # Skip null values
+                                rows.append({
+                                    'country_name': record['country']['value'],
+                                    'year': int(record['date']),
+                                    name: record['value']
+                                })
+                        
+                        if rows:
+                            df_clean = pd.DataFrame(rows)
+                            print(f"    SUCCESS (fallback): {df_clean.shape[0]:,} rows")
+                            return df_clean, None
+                        else:
+                            raise ValueError("No valid data records found")
+                    else:
+                        raise ValueError("Unexpected API response format")
+                else:
+                    raise ValueError(f"API returned status {response.status_code}")
+                    
+            except Exception as fallback_error:
+                error_msg = f"{name} ({code}): Cache error, fallback also failed - {str(fallback_error)}"
+                print(f"    FAILED: {str(fallback_error)}")
+                return None, error_msg
+        else:
+            # Non-cache related error
+            error_msg = f"{name} ({code}): {str(e)}"
+            print(f"    FAILED: {str(e)}")
+            return None, error_msg
 
 # Track downloads
 successful_downloads = []

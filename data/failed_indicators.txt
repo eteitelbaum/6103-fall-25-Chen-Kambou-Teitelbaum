@@ -20,3 +20,12 @@ Detailed Errors:
 - rule_of_law (RL.EST): 'NoneType' object does not support item deletion
 - unemployment_total (SL.UEM.TOTL.ZS): 'NoneType' object does not support item deletion
 - unemployment_female (SL.UEM.TOTL.FE.ZS): 'NoneType' object does not support item deletion
+
+Explanation:
+
+The ones with the NoneType error were due to a cacheing issue. 
+The first three had invalid codes: 
+
+flfp_15_64 should be (SL.TLF.ACTI.FE.ZS)
+flfp_25_54 should does not exist
+dependency_ratio should be (SP.POP.DPND))
