@@ -25,11 +25,12 @@ indicators = {
     "SP.POP.DPND": "dependency_ratio",
     "SP.DYN.LE00.FE.IN": "life_exp_female",
     "SP.DYN.IMRT.IN": "infant_mortality",
+    "SP.POP.TOTL": "population_total",  # Total population
     
     # Education
     "SE.SEC.ENRR.FE": "secondary_enroll_fe",
     "SE.TER.ENRR.FE": "tertiary_enroll_fe",
-    "SE.ADT.LITR.FE.ZS": "literacy_female",
+    # "SE.ADT.LITR.FE.ZS": "literacy_female",  # Removed: Too many missing observations
     "SE.ENR.PRSC.FM.ZS": "gender_parity_primary",
     "SE.ENR.SECO.FM.ZS": "gender_parity_secondary",
     
@@ -45,6 +46,7 @@ indicators = {
     # Labor Market
     "SL.UEM.TOTL.ZS": "unemployment_total",
     "SL.UEM.TOTL.FE.ZS": "unemployment_female",
+    "SL.TLF.TOTL.IN": "labor_force_total",  # Total labor force (absolute)
 }
 
 print("COMPREHENSIVE FLFP Data Download")
@@ -208,22 +210,76 @@ except Exception as e:
     print(f"  Warning: {e}")
     df_final['iso3c'] = df_final['country_name']
 
-# Filter countries
+# Filter countries - remove regional and income aggregates
 print("Filtering to countries...")
 initial = len(df_final)
 
-if 'region' in df_final.columns:
-    df_final = df_final[
-        (df_final['region'] != '') & 
-        (df_final['region'] != 'Aggregates') &
-        (~df_final['region'].isna())
-    ]
-
-df_final = df_final[
-    (~df_final['country_name'].str.contains('income', case=False, na=False)) &
-    (~df_final['country_name'].str.contains('World', case=False, na=False)) &
-    (~df_final['country_name'].str.contains('region', case=False, na=False))
+# Comprehensive list of aggregates to exclude
+aggregates_to_remove = [
+    'Africa Eastern and Southern',
+    'Africa Western and Central', 
+    'East Asia & Pacific',
+    'East Asia & Pacific (excluding high income)',
+    'East Asia & Pacific (IDA & IBRD countries)',
+    'Europe & Central Asia',
+    'Europe & Central Asia (excluding high income)',
+    'Europe & Central Asia (IDA & IBRD countries)',
+    'Latin America & Caribbean',
+    'Latin America & the Caribbean',
+    'Latin America & Caribbean (excluding high income)',
+    'Latin America & the Caribbean (IDA & IBRD countries)',
+    'Middle East & North Africa',
+    'Middle East & North Africa (excluding high income)',
+    'Middle East & North Africa (IDA & IBRD countries)',
+    'Middle East, North Africa, Afghanistan & Pakistan',
+    'Middle East, North Africa, Afghanistan & Pakistan (IDA & IBRD)',
+    'North America',
+    'South Asia',
+    'South Asia (IDA & IBRD)',
+    'Sub-Saharan Africa',
+    'Sub-Saharan Africa (excluding high income)',
+    'Sub-Saharan Africa (IDA & IBRD countries)',
+    'Arab World',
+    'Caribbean small states',
+    'Central Europe and the Baltics',
+    'Early-demographic dividend',
+    'Euro area',
+    'European Union',
+    'Fragile and conflict affected situations',
+    'Heavily indebted poor countries (HIPC)',
+    'High income',
+    'IBRD only',
+    'IDA & IBRD total',
+    'IDA blend',
+    'IDA only',
+    'IDA total',
+    'Late-demographic dividend',
+    'Least developed countries: UN classification',
+    'Low income',
+    'Lower middle income',
+    'Middle income',
+    'Not classified',
+    'OECD members',
+    'Other small states',
+    'Pacific island small states',
+    'Post-demographic dividend',
+    'Pre-demographic dividend',
+    'Small states',
+    'Upper middle income',
+    'World',
+    'Africa',
+    'North Africa',
+    'Sub-Saharan Africa (developing only)',
+    'Sub-Saharan Africa excluding South Africa',
+    'Sub-Saharan Africa excluding South Africa and Nigeria'
 ]
+
+# Remove aggregates by name
+df_final = df_final[~df_final['country_name'].isin(aggregates_to_remove)]
+
+# Also remove any entries with region='Aggregates' 
+if 'region' in df_final.columns:
+    df_final = df_final[df_final['region'] != 'Aggregates']
 
 print(f"  Removed {initial - len(df_final):,} non-country rows")
 
