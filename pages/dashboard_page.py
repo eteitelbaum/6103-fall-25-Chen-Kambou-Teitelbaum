@@ -3,12 +3,12 @@ Dashboard page for exploring FLFP dataset
 Contains sidebar filters and three visualizations
 """
 
-from dash import html, dcc, Input, Output, callback
+from dash import html, dcc, Input, Output, State, callback
 import dash_mantine_components as dmc
 from utils.data_loader import load_flfp_data, get_data_summary, get_indicator_options
-from components.viz_1 import create_viz_1
-from components.viz_2 import create_viz_2
-from components.viz_3 import create_viz_3
+from components.column_chart import create_column_chart
+from components.sunburst import create_sunburst
+from components.line_chart import create_line_chart
 
 def create_dashboard_layout():
     """
@@ -29,6 +29,12 @@ def create_dashboard_layout():
     # Initial data load
     df = load_flfp_data()
     
+    # Create initial visualizations with default indicator
+    initial_indicator = indicators[0]["value"] if indicators else None
+    initial_viz_1 = create_column_chart(df, initial_indicator, "all_regions", None, None)
+    initial_viz_2 = create_sunburst(df, initial_indicator, "all_regions", None, None)
+    initial_viz_3 = create_line_chart(df, initial_indicator, "all_regions", None, None)
+    
     return dmc.Container(
         [
             dmc.Grid(
@@ -38,6 +44,15 @@ def create_dashboard_layout():
                         [
                             dmc.Paper(
                                 [
+                                    # App title
+                                    dmc.Title(
+                                        "Female Labor Force Participation Explorer",
+                                        order=2,
+                                        mb="sm",
+                                        style={"lineHeight": 1.2}
+                                    ),
+                                    dmc.Divider(mb="md"),
+                                    
                                     dmc.Title("Filters", order=3, mb="md"),
                                     
                                     # Indicator selector
@@ -45,21 +60,20 @@ def create_dashboard_layout():
                                     dmc.Select(
                                         id="indicator-selector",
                                         data=indicators,
-                                        value=indicators[0]["value"] if indicators else None,
+                                        value=initial_indicator,
                                         placeholder="Select an indicator",
                                         clearable=False,
                                         searchable=True,
                                         mb="lg"
                                     ),
                                     
-                                    # Region multi-select
-                                    dmc.Text("Regions", size="sm", fw=500, mb="xs"),
-                                    dmc.MultiSelect(
+                                    # Region radio selector
+                                    dmc.Text("Region", size="sm", fw=500, mb="xs"),
+                                    dmc.RadioGroup(
                                         id="region-selector",
-                                        data=[{"value": r, "label": r} for r in regions],
-                                        placeholder="Select regions",
-                                        clearable=True,
-                                        searchable=True,
+                                        children=[dmc.Radio(label="All Regions", value="All Regions")] + 
+                                                 [dmc.Radio(label=r, value=r) for r in regions],
+                                        value="All Regions",
                                         mb="lg"
                                     ),
                                     
@@ -85,7 +99,26 @@ def create_dashboard_layout():
                                             {"value": year, "label": str(year)}
                                             for year in [min(years) if years else 2000, max(years) if years else 2023]]
                                         if years else [],
-                                        mb="lg"
+                                        mb="xl"
+                                    ),
+                                    
+                                    # Description
+                                    dmc.Divider(mb="md"),
+                                    dmc.Text(
+                                        "About this Dashboard",
+                                        size="sm",
+                                        fw=600,
+                                        mb="xs"
+                                    ),
+                                    dmc.Text(
+                                        [
+                                            "Explore patterns and trends in female labor force participation across countries and regions. ",
+                                            "Visualizations show relationships between FLFP rates and socioeconomic indicators including economic development, ",
+                                            "education, fertility, and governance. Filter by region, country, or time period to discover insights."
+                                        ],
+                                        size="xs",
+                                        c="dimmed",
+                                        style={"lineHeight": 1.5}
                                     ),
                                     
                                 ],
@@ -108,11 +141,18 @@ def create_dashboard_layout():
                                         [
                                             dmc.Paper(
                                                 [
-                                                    html.Div(id="viz-1-container")
+                                                    html.Div(
+                                                        initial_viz_1,
+                                                        id="viz-1-container",
+                                                        style={
+                                                            "maxHeight": "480px",
+                                                            "overflowY": "auto"
+                                                        }
+                                                    )
                                                 ],
                                                 p="md",
                                                 withBorder=True,
-                                                style={"height": "100%"}
+                                                style={"height": "480px"}
                                             )
                                         ],
                                         span=6
@@ -121,11 +161,11 @@ def create_dashboard_layout():
                                         [
                                             dmc.Paper(
                                                 [
-                                                    html.Div(id="viz-2-container")
+                                                    html.Div(initial_viz_2, id="viz-2-container")
                                                 ],
                                                 p="md",
                                                 withBorder=True,
-                                                style={"height": "100%"}
+                                                style={"height": "480px"}
                                             )
                                         ],
                                         span=6
@@ -142,7 +182,7 @@ def create_dashboard_layout():
                                         [
                                             dmc.Paper(
                                                 [
-                                                    html.Div(id="viz-3-container")
+                                                    html.Div(initial_viz_3, id="viz-3-container")
                                                 ],
                                                 p="md",
                                                 withBorder=True,
@@ -161,55 +201,127 @@ def create_dashboard_layout():
                 gutter="md"
             ),
             
-            # Store filtered data
+            # Store filtered data and sunburst selection state
             dcc.Store(id="filtered-data-store", data=df.to_dict("records")),
+            dcc.Store(id="sunburst-selection-store", data=None),
         ],
         fluid=True,
         style={"padding": "20px"}
     )
 
 @callback(
-    [Output("filtered-data-store", "data"),
-     Output("viz-1-container", "children"),
+    [Output("viz-1-container", "children"),
      Output("viz-2-container", "children"),
-     Output("viz-3-container", "children")],
+     Output("viz-3-container", "children"),
+     Output("sunburst-selection-store", "data")],
     [Input("year-range-slider", "value"),
      Input("region-selector", "value"),
      Input("country-selector", "value"),
-     Input("indicator-selector", "value")]
+     Input("indicator-selector", "value"),
+     Input("viz-2", "clickData")],
+    [State("sunburst-selection-store", "data")]
 )
-def update_dashboard(year_range, selected_regions, selected_countries, selected_indicator):
+def update_dashboard(year_range, selected_region, selected_countries, selected_indicator, 
+                     sunburst_click, sunburst_store):
     """
-    Update the dashboard based on filter selections.
+    Update the dashboard based on filter selections with priority logic.
+    
+    Selection Priority:
+        1. Sunburst click (highest) - overrides all other selections
+        2. Country dropdown - overrides region radio
+        3. Region radio - applies when no countries selected
+        4. Default - "All Regions"
     
     Args:
         year_range: List of [min_year, max_year]
-        selected_regions: List of selected region names
-        selected_countries: List of selected country names
+        selected_region: Single selected region from radio (or "All Regions")
+        selected_countries: List of selected country names from multi-select
         selected_indicator: Selected indicator column name
+        sunburst_click: Click data from sunburst chart
+        sunburst_store: Previous sunburst selection state
         
     Returns:
-        tuple: (filtered_data_dict, viz_1, viz_2, viz_3)
+        tuple: (viz_1, viz_2, viz_3, sunburst_store)
     """
     import pandas as pd
+    from dash import ctx
     
-    # Load and filter data
+    # Load and filter data by year range
     df = load_flfp_data()
     
-    # Apply filters
     if year_range:
         df = df[(df['year'] >= year_range[0]) & (df['year'] <= year_range[1])]
     
-    if selected_regions:
-        df = df[df['region'].isin(selected_regions)]
+    # Determine selection state based on priority logic
+    mode, effective_region, effective_countries, new_sunburst_store = _determine_selection_mode(
+        selected_region, selected_countries, sunburst_click, sunburst_store, df
+    )
     
-    if selected_countries:
-        df = df[df['country_name'].isin(selected_countries)]
+    # Create visualizations with determined mode and selections
+    viz_1 = create_column_chart(df, selected_indicator, mode, effective_region, effective_countries)
+    viz_2 = create_sunburst(df, selected_indicator, mode, effective_region, effective_countries)
+    viz_3 = create_line_chart(df, selected_indicator, mode, effective_region, effective_countries)
     
-    # Create visualizations with selected indicator
-    viz_1 = create_viz_1(df, selected_indicator)
-    viz_2 = create_viz_2(df, selected_indicator)
-    viz_3 = create_viz_3(df, selected_indicator)
+    return viz_1, viz_2, viz_3, new_sunburst_store
+
+
+def _determine_selection_mode(region_radio, country_dropdown, sunburst_click, sunburst_store, df):
+    """
+    Determine the display mode and effective selections based on priority logic.
     
-    return df.to_dict("records"), viz_1, viz_2, viz_3
+    Returns:
+        tuple: (mode, effective_region, effective_countries, new_sunburst_store)
+    """
+    from dash import ctx
+    
+    # Check if sunburst was clicked
+    triggered_id = ctx.triggered_id if ctx.triggered else None
+    
+    if triggered_id == "viz-2" and sunburst_click:
+        # Sunburst click has highest priority
+        clicked_label = sunburst_click['points'][0]['label']
+        
+        # Determine if it's a region or country
+        if clicked_label == "World":
+            # Clicked root, reset to all regions
+            return "all_regions", None, None, None
+        
+        # Check if clicked item is a region or country
+        regions = df['region'].dropna().unique().tolist()
+        
+        if clicked_label in regions:
+            # Clicked a region
+            return "region_only", clicked_label, None, {"type": "region", "value": clicked_label}
+        else:
+            # Clicked a country
+            return "single_country", None, [clicked_label], {"type": "country", "value": clicked_label}
+    
+    # If no new sunburst click, check if we should preserve previous sunburst selection
+    # Only preserve if no dropdown selections are active
+    if sunburst_store and not country_dropdown:
+        store_type = sunburst_store.get("type")
+        store_value = sunburst_store.get("value")
+        
+        if store_type == "region" and region_radio == "All Regions":
+            return "region_only", store_value, None, sunburst_store
+        elif store_type == "country" and region_radio == "All Regions":
+            return "single_country", None, [store_value], sunburst_store
+    
+    # Clear sunburst store if dropdown selections are active
+    if country_dropdown or (region_radio and region_radio != "All Regions"):
+        sunburst_store = None
+    
+    # Check country dropdown (second priority)
+    if country_dropdown and len(country_dropdown) > 0:
+        if len(country_dropdown) == 1:
+            return "single_country", None, country_dropdown, None
+        else:
+            return "multi_country", None, country_dropdown, None
+    
+    # Check region radio (third priority)
+    if region_radio and region_radio != "All Regions":
+        return "region_only", region_radio, None, None
+    
+    # Default: all regions
+    return "all_regions", None, None, None
 
