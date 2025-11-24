@@ -63,3 +63,8 @@ Make sure your environment is activated before running any code:
 - requests - HTTP library
 - wbgapi - World Bank API wrapper
 
+## Github
+   ```git add .
+   git commit -m "Describe your changes here"
+   git push origin chen-branch```
+   ```
