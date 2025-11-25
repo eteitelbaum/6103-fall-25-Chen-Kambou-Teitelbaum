@@ -112,6 +112,9 @@ def _create_sunburst_figure(data, indicator, highlight_items=None):
     # Format indicator label
     indicator_label = _format_label(indicator)
     
+    # Shorten label for legend (max 25 characters)
+    legend_label = _shorten_label(indicator_label, max_length=25)
+    
     fig = go.Figure(go.Sunburst(
         labels=data['labels'],
         parents=data['parents'],
@@ -123,7 +126,7 @@ def _create_sunburst_figure(data, indicator, highlight_items=None):
             cmid=data['colors'].mean(),
             line=dict(color='white', width=2),
             colorbar=dict(
-                title=indicator_label,
+                title=legend_label,
                 thickness=15,
                 len=0.7
             )
@@ -168,7 +171,61 @@ def _create_empty_chart(indicator=None):
 
 
 def _format_label(column_name):
-    """Convert snake_case column name to Title Case label."""
+    """Convert column name to properly formatted label."""
     if not column_name:
         return "Indicator"
-    return column_name.replace('_', ' ').title()
+    
+    label_mapping = {
+        "flfp_15_64": "FLFP Rates (ages 15-64)",
+        "dependency_ratio": "Dependency Ratio",
+        "fertility_adolescent": "Adolescent Fertility Rate",
+        "fertility_rate": "Total Fertility Rate",
+        "gdp_growth": "GDP Growth (%)",
+        "gdp_per_capita_const": "GDP per Capita (constant)",
+        "gender_parity_primary": "Gender Parity (primary education)",
+        "gender_parity_secondary": "Gender Parity (secondary education)",
+        "industry_gdp": "Industry Share of GDP (%)",
+        "infant_mortality": "Infant Mortality Rate",
+        "labor_force_total": "Total Labor Force",
+        "life_exp_female": "Female Life Expectancy",
+        "population_total": "Total Population",
+        "rule_of_law": "Rule of Law Index",
+        "secondary_enroll_fe": "Female Secondary Enrollment (%)",
+        "services_gdp": "Services Share of GDP (%)",
+        "tertiary_enroll_fe": "Female Tertiary Enrollment (%)",
+        "unemployment_female": "Female Unemployment (%)",
+        "unemployment_total": "Total Unemployment (%)",
+        "urban_population": "Urban Population (%)"
+    }
+    
+    return label_mapping.get(column_name, column_name.replace('_', ' ').title())
+
+
+def _shorten_label(label, max_length=25):
+    """Shorten label for legend if it exceeds max_length."""
+    if len(label) <= max_length:
+        return label
+    
+    # Common abbreviations for legend
+    abbreviations = {
+        "Gender Parity (secondary education)": "Gender Parity (sec)",
+        "Gender Parity (primary education)": "Gender Parity (pri)",
+        "Female Secondary Enrollment (%)": "Sec. Enrollment (%)",
+        "Female Tertiary Enrollment (%)": "Tert. Enrollment (%)",
+        "GDP per Capita (constant)": "GDP per Capita",
+        "FLFP Rates (ages 15-64)": "FLFP (15-64)",
+        "Adolescent Fertility Rate": "Adolescent Fert.",
+        "Total Fertility Rate": "Fertility Rate",
+        "Female Life Expectancy": "Life Exp. (F)",
+        "Industry Share of GDP (%)": "Industry (% GDP)",
+        "Services Share of GDP (%)": "Services (% GDP)",
+        "Female Unemployment (%)": "Unemployment (F)",
+        "Total Unemployment (%)": "Unemployment"
+    }
+    
+    # Check if we have a custom abbreviation
+    if label in abbreviations:
+        return abbreviations[label]
+    
+    # Otherwise truncate with ellipsis
+    return label[:max_length-3] + "..."

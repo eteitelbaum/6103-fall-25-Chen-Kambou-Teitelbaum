@@ -105,33 +105,36 @@ def create_dashboard_layout():
                                     # Description
                                     dmc.Divider(mb="md"),
                                     dmc.Text(
-                                        "About this Dashboard",
+                                        "About this App",
                                         size="sm",
                                         fw=600,
                                         mb="xs"
                                     ),
                                     dmc.Text(
                                         [
-                                            "Explore patterns and trends in female labor force participation across countries and regions. ",
-                                            "Visualizations show relationships between FLFP rates and socioeconomic indicators including economic development, ",
-                                            "education, fertility, and governance. Filter by region, country, or time period to discover insights."
+                                            "Use the Dashboard to explore patterns and trends in female labor force participation (FLFP) ",
+                                            "and related socioeconomic indicators across countries and regions. Then, go to the Model Explorer ",
+                                            "to view a predictive model of FLFP based on these factors, test predictions for specific countries, ",
+                                            "and create your own hypothetical scenarios. ",
+                                            "All data come from the World Bank Development Indicators database." 
                                         ],
                                         size="xs",
                                         c="dimmed",
                                         style={"lineHeight": 1.5}
                                     ),
                                     
-                                ],
-                                p="md",
-                                withBorder=True,
-                                style={"height": "100%"}
-                            )
                         ],
-                        span=3,
-                        style={"height": "100vh", "overflow-y": "auto"}
-                    ),
-                    
-                    # Main content column
+                        p="md",
+                        withBorder=True,
+                        style={
+                            "height": "87.5vh",
+                            "overflowY": "auto",
+                            "overflowX": "hidden"
+                        }
+                    )
+                ],
+                span=3
+            ),                    # Main content column
                     dmc.GridCol(
                         [
                             # First row: Two equally sized visualizations
@@ -145,14 +148,15 @@ def create_dashboard_layout():
                                                         initial_viz_1,
                                                         id="viz-1-container",
                                                         style={
-                                                            "maxHeight": "480px",
-                                                            "overflowY": "auto"
+                                                            "height": "100%",
+                                                            "overflowY": "auto",
+                                                            "overflowX": "hidden"
                                                         }
                                                     )
                                                 ],
                                                 p="md",
                                                 withBorder=True,
-                                                style={"height": "480px"}
+                                                style={"height": "40vh"}
                                             )
                                         ],
                                         span=6
@@ -161,11 +165,15 @@ def create_dashboard_layout():
                                         [
                                             dmc.Paper(
                                                 [
-                                                    html.Div(initial_viz_2, id="viz-2-container")
+                                                    html.Div(
+                                                        initial_viz_2,
+                                                        id="viz-2-container",
+                                                        style={"height": "100%"}
+                                                    )
                                                 ],
                                                 p="md",
                                                 withBorder=True,
-                                                style={"height": "480px"}
+                                                style={"height": "40vh"}
                                             )
                                         ],
                                         span=6
@@ -182,11 +190,15 @@ def create_dashboard_layout():
                                         [
                                             dmc.Paper(
                                                 [
-                                                    html.Div(initial_viz_3, id="viz-3-container")
+                                                    html.Div(
+                                                        initial_viz_3,
+                                                        id="viz-3-container",
+                                                        style={"height": "100%"}
+                                                    )
                                                 ],
                                                 p="md",
                                                 withBorder=True,
-                                                style={"height": "100%"}
+                                                style={"height": "45vh"}
                                             )
                                         ],
                                         span=12

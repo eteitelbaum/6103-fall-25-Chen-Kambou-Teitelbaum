@@ -211,7 +211,31 @@ def _create_empty_chart(indicator):
 
 
 def _format_label(column_name):
-    """Convert snake_case column name to Title Case label."""
+    """Convert column name to properly formatted label."""
     if not column_name:
         return "Indicator"
-    return column_name.replace('_', ' ').title()
+    
+    label_mapping = {
+        "flfp_15_64": "FLFP Rates (ages 15-64)",
+        "dependency_ratio": "Dependency Ratio",
+        "fertility_adolescent": "Adolescent Fertility Rate",
+        "fertility_rate": "Total Fertility Rate",
+        "gdp_growth": "GDP Growth (%)",
+        "gdp_per_capita_const": "GDP per Capita (constant)",
+        "gender_parity_primary": "Gender Parity (primary education)",
+        "gender_parity_secondary": "Gender Parity (secondary education)",
+        "industry_gdp": "Industry Share of GDP (%)",
+        "infant_mortality": "Infant Mortality Rate",
+        "labor_force_total": "Total Labor Force",
+        "life_exp_female": "Female Life Expectancy",
+        "population_total": "Total Population",
+        "rule_of_law": "Rule of Law Index",
+        "secondary_enroll_fe": "Female Secondary Enrollment (%)",
+        "services_gdp": "Services Share of GDP (%)",
+        "tertiary_enroll_fe": "Female Tertiary Enrollment (%)",
+        "unemployment_female": "Female Unemployment (%)",
+        "unemployment_total": "Total Unemployment (%)",
+        "urban_population": "Urban Population (%)"
+    }
+    
+    return label_mapping.get(column_name, column_name.replace('_', ' ').title())

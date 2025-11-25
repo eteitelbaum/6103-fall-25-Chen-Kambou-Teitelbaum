@@ -3,7 +3,7 @@ Model exploration page for FLFP predictions
 Contains sliders for predictor selection and prediction display
 """
 
-from dash import html, dcc, Input, Output, callback
+from dash import html, dcc, Input, Output, callback, State, no_update
 import dash_mantine_components as dmc
 from utils.data_loader import load_flfp_data
 from utils.model_utils import (
@@ -17,8 +17,9 @@ from utils.model_utils import (
     get_region_features,
     get_region_options
 )
-from components.pred_comparison_viz_1 import create_prediction_comparison_viz_1
-from components.pred_comparison_viz_2 import create_prediction_comparison_viz_2
+from components.pred_comparison_map import create_prediction_comparison_viz_1
+from components.pred_comparison_hist import create_prediction_comparison_viz_2
+from utils.map_data_utils import get_country_features
 
 
 def create_slider_for_feature(feature_name, stats, default_value=None):
@@ -180,10 +181,10 @@ def create_model_layout():
     
     return dmc.Container(
         [
-            # Two-column layout
+            # Two-column layout with fixed heights
             dmc.Grid(
                 [
-                    # Left column: Sliders (scrollable)
+                    # Left column: Sliders (scrollable, fixed height)
                     dmc.GridCol(
                         [
                             dmc.Paper(
@@ -203,65 +204,73 @@ def create_model_layout():
                                 p="md",
                                 withBorder=True,
                                 style={
-                                    "maxHeight": "1200px",
-                                    "overflowY": "auto"
+                                    "height": "93vh",
+                                    "overflowY": "auto",
+                                    "overflowX": "hidden"
                                 }
                             )
                         ],
                         span=5
                     ),
                     
-                    # Right column: Prediction + Visualizations (stacked vertically)
+                    # Right column: Fixed visualizations (no scroll)
                     dmc.GridCol(
-                        dmc.Stack(
-                            [
-                                # Prediction box (smaller/more compact)
-                                dmc.Paper(
-                                    [
-                                        dmc.Title("Predicted FLFP Rate", order=4, mb="sm"),
-                                        dmc.Text(
-                                            id="prediction-display",
-                                            size="xl",
-                                            fw=700,
-                                            ta="center",
-                                            style={"fontSize": "42px", "color": "#228be6"}
-                                        ),
-                                        dmc.Text(
-                                            "Female Labor Force Participation Rate (%)",
-                                            size="xs",
-                                            c="dimmed",
-                                            ta="center",
-                                            mt="xs"
-                                        )
-                                    ],
-                                    p="md",
-                                    withBorder=True
-                                ),
-                                
-                                # First comparison visualization
-                                dmc.Paper(
-                                    [
-                                        html.Div(id="pred-comparison-viz-1-container")
-                                    ],
-                                    p="md",
-                                    withBorder=True
-                                ),
-                                
-                                # Second comparison visualization
-                                dmc.Paper(
-                                    [
-                                        html.Div(id="pred-comparison-viz-2-container")
-                                    ],
-                                    p="md",
-                                    withBorder=True
-                                ),
-                            ],
-                            gap="md",
-                            style={
-                                "maxHeight": "1200px",
-                                "overflowY": "auto"
-                            }
-                        ),
+                        [
+                            dmc.Stack(
+                                [
+                                    # Prediction box (15vh)
+                                    dmc.Paper(
+                                        [
+                                            dmc.Title("Predicted FLFP Rate", order=4, mb="sm"),
+                                            dmc.Center([
+                                                dmc.Text(
+                                                    id="prediction-display",
+                                                    size="48px",
+                                                    fw=700,
+                                                    c="blue"
+                                                )
+                                            ]),
+                                            dmc.Text(
+                                                "Female Labor Force Participation Rate (%)",
+                                                size="xs",
+                                                c="dimmed",
+                                                ta="center"
+                                            )
+                                        ],
+                                        p="md",
+                                        withBorder=True,
+                                        style={"height": "15vh"}
+                                    ),
+                                    
+                                    # Choropleth map (45vh)
+                                    dmc.Paper(
+                                        [
+                                            html.Div(
+                                                id="pred-comparison-viz-1-container",
+                                                style={"height": "100%"}
+                                            )
+                                        ],
+                                        p="md",
+                                        withBorder=True,
+                                        style={"height": "45vh"}
+                                    ),
+                                    
+                                    # Histogram (30vh)
+                                    dmc.Paper(
+                                        [
+                                            html.Div(
+                                                id="pred-comparison-viz-2-container",
+                                                style={"height": "100%"}
+                                            )
+                                        ],
+                                        p="md",
+                                        withBorder=True,
+                                        style={"height": "30vh"}
+                                    ),
+                                ],
+                                gap="md"
+                            )
+                        ],
                         span=7
                     ),
                 ],
@@ -347,6 +356,58 @@ def _register_callbacks():
         if log_pop is None:
             return ""
         return f"Current: {format_population_value(log_pop)}"
+    
+    # Map click callback - updates all sliders when a country is clicked
+    @callback(
+        [Output("radio-region", "value")] + 
+        [Output(f"slider-{feature}", "value") for feature in ordered_features if feature not in region_features],
+        Input("pred-comparison-viz-1", "clickData"),
+        prevent_initial_call=True
+    )
+    def update_sliders_from_map_click(click_data):
+        """
+        Update all sliders when a country is clicked on the map.
+        
+        Args:
+            click_data: Click data from the choropleth map
+            
+        Returns:
+            tuple: Values for region radio and all feature sliders
+        """
+        if click_data is None:
+            return no_update
+        
+        # Extract country name from click data
+        try:
+            country_name = click_data['points'][0]['hovertext']
+        except (KeyError, IndexError, TypeError):
+            return no_update
+        
+        # Get features for this country
+        country_features = get_country_features(country_name)
+        
+        if country_features is None:
+            return no_update
+        
+        # Find which region is active
+        selected_region = None
+        for region in region_features:
+            if country_features.get(region, 0) == 1:
+                selected_region = region
+                break
+        
+        if selected_region is None:
+            selected_region = region_features[0]  # Fallback
+        
+        # Build output values: region first, then all non-region features in order
+        output_values = [selected_region]
+        
+        non_region_features = [f for f in ordered_features if f not in region_features]
+        for feature in non_region_features:
+            value = country_features.get(feature, 0)
+            output_values.append(value)
+        
+        return output_values
 
 
 # Register callbacks when module is imported
