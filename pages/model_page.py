@@ -164,7 +164,8 @@ def create_model_layout():
             default_region = region
             break
     if default_region is None:
-        default_region = region_features[0]  # Fallback to first region
+        # No region dummy is 1, so it's the reference category
+        default_region = 'region_mena_afpak'
     
     region_selector = html.Div([
         dmc.Text("Region", size="sm", fw=500, mb="xs"),
@@ -191,7 +192,7 @@ def create_model_layout():
                                 [
                                     dmc.Title("Model Predictors", order=4, mb="md"),
                                     dmc.Text(
-                                        "Ordered by feature importance",
+                                        "Adjust for hypothetical country characteristics:",
                                         size="xs",
                                         c="dimmed",
                                         mb="md"
@@ -397,7 +398,8 @@ def _register_callbacks():
                 break
         
         if selected_region is None:
-            selected_region = region_features[0]  # Fallback
+            # No region dummy is 1, so it's the reference category
+            selected_region = 'region_mena_afpak'
         
         # Build output values: region first, then all non-region features in order
         output_values = [selected_region]

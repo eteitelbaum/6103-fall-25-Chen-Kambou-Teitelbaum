@@ -183,6 +183,7 @@ def get_feature_label(feature_name):
         'region_eap': 'East Asia & Pacific',
         'region_eca': 'Europe & Central Asia',
         'region_lac': 'Latin America & Caribbean',
+        'region_mena_afpak': 'MENA + AfPak',
         'region_namerica': 'North America',
         'region_sasia': 'South Asia',
         'region_ssa': 'Sub-Saharan Africa',
@@ -211,13 +212,15 @@ def get_region_features():
 def get_region_options():
     """
     Get region options for radio button selection.
+    Includes all regions, including the reference category (MENA + AfPak).
     
     Returns:
         list: List of dicts with 'value' and 'label' for each region
     """
-    regions = get_region_features()
+    # Include the reference category first, then all dummy variables
+    all_regions = ['region_mena_afpak'] + get_region_features()
     return [
         {'value': region, 'label': get_feature_label(region)}
-        for region in regions
+        for region in all_regions
     ]
 
