@@ -1,7 +1,7 @@
 """
 Main Dash application for FLFP Data Explorer
 Two-page app with dashboard and model exploration
-Updated: 2025-11-25 - Model retrained with scikit-learn 1.5.2
+Updated: 2025-11-25 21:45 - Model retrained with scikit-learn 1.5.2, LFS pushed
 """
 
 import dash
