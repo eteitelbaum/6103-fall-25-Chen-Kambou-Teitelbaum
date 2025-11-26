@@ -9,7 +9,7 @@ import pandas as pd
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).parent.parent
-MODEL_PATH = PROJECT_ROOT / "data" / "rf_model_v2.pkl"
+MODEL_PATH = PROJECT_ROOT / "data" / "rf_model_artifacts.pkl"
 STATS_PATH = PROJECT_ROOT / "data" / "feature_stats.json"
 
 # Cache loaded artifacts (load once, use many times)
