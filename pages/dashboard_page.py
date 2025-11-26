@@ -288,52 +288,56 @@ def _determine_selection_mode(region_radio, country_dropdown, sunburst_click, su
     
     # Check if sunburst was clicked
     triggered_id = ctx.triggered_id if ctx.triggered else None
-    
+
     if triggered_id == "viz-2" and sunburst_click:
         # Sunburst click has highest priority
         clicked_label = sunburst_click['points'][0]['label']
-        
+
         # Determine if it's a region or country
         if clicked_label == "World":
             # Clicked root, reset to all regions
             return "all_regions", None, None, None
-        
+
         # Check if clicked item is a region or country
         regions = df['region'].dropna().unique().tolist()
-        
+
         if clicked_label in regions:
             # Clicked a region
             return "region_only", clicked_label, None, {"type": "region", "value": clicked_label}
         else:
             # Clicked a country
             return "single_country", None, [clicked_label], {"type": "country", "value": clicked_label}
-    
-    # If no new sunburst click, check if we should preserve previous sunburst selection
-    # Only preserve if no dropdown selections are active
-    if sunburst_store and not country_dropdown:
+
+    # If no new sunburst click, preserve previous sunburst selection if present and no explicit region/country selection
+    if sunburst_store:
         store_type = sunburst_store.get("type")
         store_value = sunburst_store.get("value")
-        
-        if store_type == "region" and region_radio == "All Regions":
+
+        # Only clear sunburst store if a new region/country is explicitly selected
+        if country_dropdown and len(country_dropdown) > 0:
+            if len(country_dropdown) == 1:
+                return "single_country", None, country_dropdown, None
+            else:
+                return "multi_country", None, country_dropdown, None
+        elif region_radio and region_radio != "All Regions":
+            return "region_only", region_radio, None, None
+        # Otherwise, persist previous sunburst selection
+        if store_type == "region" and (not region_radio or region_radio == "All Regions") and not country_dropdown:
             return "region_only", store_value, None, sunburst_store
-        elif store_type == "country" and region_radio == "All Regions":
+        elif store_type == "country" and (not region_radio or region_radio == "All Regions") and not country_dropdown:
             return "single_country", None, [store_value], sunburst_store
-    
-    # Clear sunburst store if dropdown selections are active
-    if country_dropdown or (region_radio and region_radio != "All Regions"):
-        sunburst_store = None
-    
-    # Check country dropdown (second priority)
+
+    # If no sunburst selection, check country dropdown (second priority)
     if country_dropdown and len(country_dropdown) > 0:
         if len(country_dropdown) == 1:
             return "single_country", None, country_dropdown, None
         else:
             return "multi_country", None, country_dropdown, None
-    
+
     # Check region radio (third priority)
     if region_radio and region_radio != "All Regions":
         return "region_only", region_radio, None, None
-    
+
     # Default: all regions
     return "all_regions", None, None, None
 
