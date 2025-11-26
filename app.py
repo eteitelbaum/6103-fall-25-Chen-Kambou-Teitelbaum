@@ -17,6 +17,9 @@ app = dash.Dash(
     suppress_callback_exceptions=True
 )
 
+# Expose the Flask server for production deployment
+server = app.server
+
 # Set app title
 app.title = "FLFP Data Explorer"
 
